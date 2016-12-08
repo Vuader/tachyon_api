@@ -38,6 +38,23 @@ import nfw
 
 log = logging.getLogger(__name__)
 
+def get_user_roles(user_id):
+    db = nfw.Mysql()
+    result = db.execute("SELECT role_id,domain_id" +
+                        ",tenant_id FROM user_role" +
+                        " WHERE user_id = %s", (user_id,))
+    return result
+
+def get_domain_id(domain):
+    db = nfw.Mysql()
+    result = db.execute("SELECT id FROM domain" +
+                        " WHERE id = %s OR name = %s",
+                        (domain, domain))
+    if len(result) > 0:
+        return result[0]['id']
+    else:
+        return None
+
 class Token(nfw.Middleware):
     def pre(self, req, resp):
         resp.headers['Content-Type'] = nfw.APPLICATION_JSON
@@ -47,7 +64,9 @@ class Token(nfw.Middleware):
             sql = "SELECT * FROM token where token = %s AND token_expire > NOW()"
             result = db.execute(sql, (token,))
             if len(result) > 0:
-                pass
+                user_id = result[0]['id']
+                roles = get_user_roles(user_id)
+                req.context['user_roles'] = roles
             else:
                 raise nfw.HTTPError(nfw.HTTP_404,'Authentication failed', 'Token not found or expired')
 
@@ -86,17 +105,20 @@ class Authenticate(nfw.Resource):
         domain = creds.get('domain','default')
         sql = "DELETE FROM token WHERE token_expire < NOW()"
         db.execute(sql)
+        domain_id = get_domain_id(domain)
         sql = "SELECT * FROM user"
-        sql += " WHERE username = %s"
-        result = db.execute(sql, (usern,))
+        sql += " WHERE username = %s and domain_id = %s"
+        result = db.execute(sql, (usern, domain_id))
         if len(result) == 1:
             if nfw.password.valid(passw, result[0]['password']):
                 creds = {}
+                user_id = result[0]['id']
                 creds['username'] = result[0]['username']
                 creds['email'] = result[0]['email']
                 token, expire = self._new_token(result[0]['id'])
                 creds['token'] = token
                 creds['expire'] = expire.strftime("%Y/%m/%d %H:%M:%S")
+                creds['roles'] = get_user_roles(user_id)
                 return json.dumps(creds,indent=4)
             else:
                 raise nfw.HTTPError(nfw.HTTP_404,'Authentication failed','Could not validate username and password credentials')
