@@ -31,7 +31,6 @@ CREATE TABLE `tenant` (
     FOREIGN KEY (`domain_id`) REFERENCES `domain` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-
 DROP TABLE IF EXISTS `user`;
 
 CREATE TABLE `user` (
@@ -51,7 +50,7 @@ CREATE TABLE `user` (
     FOREIGN KEY (`domain_id`) REFERENCES `domain` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
-INSERT INTO user (id,domain_id,username,password) values ('C0418B28-CCAE-459E-8882-568F433C46FB','3AF4FA64-9AFE-4481-8BB6-24F246599BF3','admin','$2b$15$Ij1uoXuF3ZAuxpg6WNZ5RuPPqcKMA80Vs7ELjzF0m/WcxQNrl4ezq');
+INSERT INTO user (id,domain_id,username,password) values ('C0418B28-CCAE-459E-8882-568F433C46FB','3AF4FA64-9AFE-4481-8BB6-24F246599BF3','root','$2b$15$Ij1uoXuF3ZAuxpg6WNZ5RuPPqcKMA80Vs7ELjzF0m/WcxQNrl4ezq');
 
 DROP TABLE IF EXISTS `role`;
 
@@ -63,8 +62,13 @@ CREATE TABLE `role` (
     UNIQUE KEY `role` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
-INSERT INTO role (id,name) values ('766E2877-0E06-440A-8E02-E09988FC21A7','Administrator');
+INSERT INTO role (id,name) values ('766E2877-0E06-440A-8E02-E09988FC21A7','Root');
+INSERT INTO role (id,name) values ('8dd372aa-edc4-11e6-86e1-14109fe59f3f','Operations');
+INSERT INTO role (id,name) values ('9cd65b14-edc4-11e6-86e1-14109fe59f3f','Administrator');
+INSERT INTO role (id,name) values ('a525e582-edc4-11e6-86e1-14109fe59f3f','AccountManager');
 INSERT INTO role (id,name) values ('F4FA990F-8D08-41C4-A927-4B08D86374A0','Support');
+INSERT INTO role (id,name) values ('b7706e6a-edc4-11e6-86e1-14109fe59f3f','Billing');
+INSERT INTO role (id,name) values ('bced7216-edc4-11e6-86e1-14109fe59f3f','Customer');
 
 DROP TABLE IF EXISTS `user_role`;
 
@@ -84,6 +88,8 @@ CREATE TABLE `user_role` (
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
 
 INSERT INTO user_role (id,role_id,domain_id,user_id) values ('5E72FF71-B34E-42CC-964F-1338E9417438','766E2877-0E06-440A-8E02-E09988FC21A7','3AF4FA64-9AFE-4481-8BB6-24F246599BF3','C0418B28-CCAE-459E-8882-568F433C46FB');
+
+DROP TABLE IF EXISTS `token`;
 
 CREATE TABLE `token` (
     `id` varchar(36) NOT NULL,

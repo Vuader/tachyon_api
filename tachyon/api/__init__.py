@@ -1,2 +1,4 @@
 from .views import *
-import model
+from . import model
+from . import api
+from .version import __version__ as version

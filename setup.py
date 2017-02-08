@@ -1,30 +1,55 @@
 import os
-import subprocess
-
-from setuptools import setup
 
 try:
-    import project
+    from setuptools import setup
+    from setuptools import find_packages
 except Exception as e:
-    raise Exception("Missing or Broken Configuration" +
-                    " project.py file (%s)" % (e,))
+    print("Requires 'setuptools'")
+    print(" pip install setuptools")
+    exit()
 
-if hasattr(project, 'config'):
-    if isinstance(project.config, dict):
-        config = project.config
-    else:
-        raise Exception("'project.config' object not" +
-                        " dictionary in project.py file.")
+config = {
+    "name": "tachyon-api",
+    "author": "Christiaan F Rademan, Dave Kruger",
+    "author_email": "tachyon@fwiw.co.za",
+    "description": "Tachyon - API Inteface Modules",
+    "license": "BSD 3-Clause",
+    "keywords": "tachyon api",
+    "url": "https://github.com/vision1983/tachyon_api",
+    "packages": find_packages(),
+    "include_package_data": True,
+    "package_data": {'': ['requirements.txt']},
+    "namespace_packages": [
+        'tachyon'
+        ],
+    "classifiers": [
+        "Topic :: Software Development :: Libraries :: Application Frameworks",
+        "Environment :: Other Environment",
+        "Intended Audience :: Information Technology",
+        "Intended Audience :: System Administrators",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2.7"
+        ]
+    }
+
+# allow setup.py to be run from any path
+os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
+
+if os.path.exists(os.path.join(os.path.dirname(__file__),
+                               'requirements.txt')):
+    with open(os.path.join(os.path.dirname(__file__),
+                           'requirements.txt')) as x:
+        requirements = x.read().splitlines()
 else:
-    raise Exception("Missing config dictionary in project.py file.")
-
-with open(os.path.join(os.path.dirname(__file__), 'requirements.txt')) as x:
-    requirements = x.read().splitlines()
+    requirements = []
 
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as x:
     readme = x.read()
 
-version_py = os.path.join(os.path.dirname(__file__), 'version.py')
+version_py = os.path.join(os.path.dirname(__file__), 'tachyon/api/version.py')
 if os.path.isfile(version_py):
     with open(version_py, 'r') as fh:
         version_git = open(version_py).read()
