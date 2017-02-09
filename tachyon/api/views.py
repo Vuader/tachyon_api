@@ -285,15 +285,16 @@ class Index(nfw.Resource):
         site = req.get_app_url()
         for r in routes:
             r_method, r_uri, r_obj, r_name = r
-            url = "%s/%s" % (site, r_uri)
-            method = {}
-            method[r_method] = r_name
-            if url in resources:
-                resources[url]['methods'].append(method)
-            else:
-                resources[url] = {}
-                resources[url]['methods'] = []
-                resources[url]['methods'].append(method)
+            if req.policy.validate(r_name):
+                url = "%s/%s" % (site, r_uri)
+                method = {}
+                method[r_method] = r_name
+                if url in resources:
+                    resources[url]['methods'].append(method)
+                else:
+                    resources[url] = {}
+                    resources[url]['methods'] = []
+                    resources[url]['methods'].append(method)
         return json.dumps(resources, indent=4)
 
 
