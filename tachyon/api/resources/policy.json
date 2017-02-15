@@ -10,6 +10,8 @@
     "is_user": "$context.login:True",
     "users:admin": "Rule:is_root or Rule:is_ops or Rule:is_admin or Rule:is_support",
     "users:view": "Rule:is_root or Rule:is_ops or Rule:is_admin or Rule:is_support",
+    "tenants:admin": "Rule:is_root or Rule:is_ops or Rule:is_admin or Rule:is_support or Rule:is_billing or Rule:is_accounts or Rule:is_billing",
+    "tenants:view": "Rule:is_root or Rule:is_ops or Rule:is_admin or Rule:is_support or Rule:is_billing or Rule:is_accounts or Rule:is_billing",
     "network:admin": "Rule:is_root or Rule:is_ops",
     "network:users": "Rule:is_user",
     "broadband:admin": "Rule:is_root or Rule:is_ops",

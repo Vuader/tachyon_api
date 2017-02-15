@@ -327,29 +327,32 @@ class Authenticate(nfw.Resource):
         return [token_id, session_expire]
 
     def get(self, req, resp):
-        db = nfw.Mysql()
-        sql = "SELECT * FROM user"
-        sql += " WHERE id = %s"
-        result = db.execute(sql, (req.context['user_id'],))
-        db.commit()
-        if len(result) == 1:
-            creds = {}
-            user_id = result[0]['id']
-            creds['username'] = result[0]['username']
-            creds['email'] = result[0]['email']
-            creds['token'] = req.context['token']
-            sql = "SELECT * FROM token where token = %s"
-            token_result = db.execute(sql, (req.context['token'],))
-            creds['expire'] = token_result[0]['token_expire'].strftime("%Y/%m/%d %H:%M:%S")
-            creds['roles'] = get_user_roles(user_id)
-            return json.dumps(creds, indent=4)
+        if 'user_id' in req.context:
+            db = nfw.Mysql()
+            sql = "SELECT * FROM user"
+            sql += " WHERE id = %s"
+            result = db.execute(sql, (req.context['user_id'],))
+            db.commit()
+            if len(result) == 1:
+                creds = {}
+                user_id = result[0]['id']
+                creds['username'] = result[0]['username']
+                creds['email'] = result[0]['email']
+                creds['token'] = req.context['token']
+                sql = "SELECT * FROM token where token = %s"
+                token_result = db.execute(sql, (req.context['token'],))
+                creds['expire'] = token_result[0]['token_expire'].strftime("%Y/%m/%d %H:%M:%S")
+                creds['roles'] = get_user_roles(user_id)
+                return json.dumps(creds, indent=4)
+        else:
+            return "{}"
 
     def post(self, req, resp):
         db = nfw.Mysql()
         creds = json.loads(req.read())
         usern = creds.get('username', '')
         passw = creds.get('password', '')
-        domain = creds.get('domain', 'default')
+        domain = req.headers.get('X-Domain', 'default')
         sql = "DELETE FROM token WHERE token_expire < NOW()"
         db.execute(sql)
         domain_id = get_domain_id(domain)
