@@ -56,7 +56,8 @@ DROP TABLE IF EXISTS `role`;
 
 CREATE TABLE `role` (
     `id` varchar(36) NOT NULL,
-    `name` varchar(64) DEFAULT NULL,
+    `name` varchar(64) NOT NULL,
+    `description` varchar(128) DEFAULT NULL,
     `creation_time` DATETIME DEFAULT NOW(),
     PRIMARY KEY (`id`),
     UNIQUE KEY `role` (`name`)
