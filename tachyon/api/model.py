@@ -41,7 +41,7 @@ class UserFields(object):
     id = nfw.Model.Uuid()
     domain_id = nfw.Model.Uuid()
     tenant_id = nfw.Model.Uuid()
-    username = nfw.Model.Text()
+    username = nfw.Model.Text(label="Username")
     password = nfw.Model.Password()
     email = nfw.Model.Email()
     last_login = nfw.Model.Datetime()
