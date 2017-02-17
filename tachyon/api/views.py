@@ -238,7 +238,6 @@ class Token(nfw.Middleware):
                 req.context['token'] = token
 
                 roles = get_user_roles(user_id)
-                log.error(str(roles))
                 req.context['login'] = True
                 db.execute("UPDATE token" +
                            " set token_expire =" +

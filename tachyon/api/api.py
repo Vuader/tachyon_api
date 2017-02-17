@@ -103,13 +103,14 @@ def get(model, req, id, where=None, where_values=None):
 
     sql_search_where = []
     if search is not None:
+        search = "%s%s" % (search,'%')
         for field in data._declared_fields:
             f = getattr(data, field)
             if isinstance(f, nfw.model.Fields.Text):
-                sql_search_where.append("%s = %s" % (field, '%s'))
+                sql_search_where.append("%s like %s" % (field, '%s'))
                 sql_values.append(search)
             if isinstance(f, nfw.model.Fields.Integer):
-                sql_search_where.append("%s = %s" % (field, '%s'))
+                sql_search_where.append("%s like %s" % (field, '%s'))
                 sql_values.append(int(search))
         if len(sql_search_where) > 0:
             sql_search_string = " or ".join(sql_search_where)
@@ -156,7 +157,7 @@ def get(model, req, id, where=None, where_values=None):
             formatted_order = "%s %s" % (order_field, order_type)
             formatted_orders.append(formatted_order)
         formatted_orders = ",".join(formatted_orders)
-        sql_order = "order by %s " % (formatted_orders,)
+        sql_order = "ORDER BY %s " % (formatted_orders,)
 
     sql_query = "SELECT * FROM %s" % (table,)
     if len(sql_where) > 0:
