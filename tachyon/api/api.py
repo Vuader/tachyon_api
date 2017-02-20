@@ -70,7 +70,7 @@ def parse_body(body, domain, domain_id, tenant, tenant_id):
     return json.dumps(obj)
 
 
-def get(model, req, id, where=None, where_values=None):
+def get(model, req, resp, id, where=None, where_values=None):
     db = nfw.Mysql()
     data = model(db=db)
     table = model_table(data)
@@ -160,9 +160,15 @@ def get(model, req, id, where=None, where_values=None):
         sql_order = "ORDER BY %s " % (formatted_orders,)
 
     sql_query = "SELECT * FROM %s" % (table,)
+    sql_count = "SELECT count(id) as count FROM %s" % (table,)
     if len(sql_where) > 0:
         sql_query = "%s where %s" % (sql_query, sql_where_string)
+        sql_count = "%s where %s" % (sql_count, sql_where_string)
     sql_query = "%s %s %s" % (sql_query, sql_order, sql_pager)
+
+    count_result = db.execute(sql_count, sql_values)
+    resp.headers['X-Total-Rows'] = count_result[0]['count']
+    resp.headers['X-Filtered-Rows'] = count_result[0]['count']
 
     data.query(sql_query, sql_values)
     data.commit()

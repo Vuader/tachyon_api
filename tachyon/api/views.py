@@ -390,7 +390,7 @@ class Users(nfw.Resource):
                        'users:admin')
 
     def get(self, req, resp, id=None):
-        return api.get(model.Users, req, id)
+        return api.get(model.Users, req, resp, id)
 
     def post(self, req, resp):
         return api.post(model.User, req)
