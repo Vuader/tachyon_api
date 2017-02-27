@@ -401,10 +401,15 @@ def delete(model, req, id):
         sql = "delete from %s" % (table) +\
                " where id = %s and tenant_id = %s and domain_id = %s"
         db.execute(sql, (id, tenant_id, domain_id))
-    else:
+    elif domain_field is True and domain_id is not None:
         sql = "delete from %s" % (table) +\
               " where id = %s and domain_id = %s"
         db.execute(sql, (id, domain_id))
+    else:
+        sql = "delete from %s" % (table) +\
+              " where id = %s"
+        db.execute(sql, (id,))
+
 
     if db.last_row_count() > 0:
         db.commit()
