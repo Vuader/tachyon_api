@@ -59,8 +59,6 @@ if os.path.isfile(version_py):
 else:
     version_git = '0.0.0'
 
-print("%s %s\n" % (config['name'], version_git))
-
 setup(
     install_requires=requirements,
     long_description=readme,

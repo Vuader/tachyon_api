@@ -38,6 +38,7 @@ from collections import OrderedDict
 
 import nfw
 
+import tachyon.common
 from tachyon.api import model
 from tachyon.api import api
 
@@ -206,7 +207,10 @@ def get_lastlogin(username):
         return None
 
 
-class Token(nfw.Middleware):
+class Token(object):
+    def __init__(self, app):
+        pass
+
     def pre(self, req, resp):
         tenant = req.headers.get('X-Tenant')
         domain = req.headers.get('X-Domain', 'default')
@@ -273,8 +277,8 @@ class Token(nfw.Middleware):
                         role_name = get_role_name(role['role_id'])
                         req.context['roles'].append(role_name)
 
-
-class Index(nfw.Resource):
+@nfw.app.resources()
+class Index(object):
     def __init__(self, app):
         app.router.add(nfw.HTTP_GET, '/', self.index, 'tachyon:public')
 
@@ -297,7 +301,8 @@ class Index(nfw.Resource):
         return json.dumps(resources, indent=4)
 
 
-class Authenticate(nfw.Resource):
+@nfw.app.resources()
+class Authenticate(object):
     def __init__(self, app):
         app.router.add(nfw.HTTP_POST, '/login', self.post, 'tachyon:public')
         app.router.add(nfw.HTTP_GET, '/login', self.get, 'tachyon:public')
@@ -380,7 +385,8 @@ class Authenticate(nfw.Resource):
                                 ' and password credentials')
 
 
-class Users(nfw.Resource):
+@nfw.app.resources()
+class Users(object):
     def __init__(self, app):
         app.router.add(nfw.HTTP_GET, '/users', self.get, 'users:view')
         app.router.add(nfw.HTTP_GET, '/users/{id}', self.get, 'users:view')
@@ -390,13 +396,13 @@ class Users(nfw.Resource):
                        'users:admin')
 
     def get(self, req, resp, id=None):
-        return api.get(model.Users, req, resp, id)
+        return api.get(tachyon.common.model.Users, req, resp, id)
 
     def post(self, req, resp):
-        return api.post(model.User, req)
+        return api.post(tachyon.common.model.User, req)
 
     def put(self, req, resp, id):
-        return api.put(model.User, req, id)
+        return api.put(tachyon.common.model.User, req, id)
 
     def delete(self, req, resp, id):
-        return api.delete(model.User, req, id)
+        return api.delete(tachyon.common.model.User, req, id)
