@@ -38,11 +38,13 @@ import re
 
 import nfw
 
+from tachyon.api import Mysql
+
 log = logging.getLogger(__name__)
 
 
 def table_has_col(table, column):
-    db = nfw.Mysql()
+    db = Mysql()
     result = db.execute("DESCRIBE %s" % (table,))
     for field in result:
         if field['Field'] == column:
@@ -71,7 +73,7 @@ def parse_body(body, domain, domain_id, tenant, tenant_id):
 
 
 def sql_get(table, req, resp, id, where=None, where_values=None):
-    db = nfw.Mysql()
+    db = Mysql()
 
     tenant_id = req.context.get('tenant_id')
     domain_id = req.context.get('domain_id')
@@ -181,7 +183,7 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
 
 
 def get(model, req, resp, id, where=None, where_values=None):
-    db = nfw.Mysql()
+    db = Mysql()
     data = model(db=db)
     table = model_table(data)
 
@@ -292,7 +294,7 @@ def get(model, req, resp, id, where=None, where_values=None):
 
 
 def post(model, req):
-    db = nfw.Mysql()
+    db = Mysql()
     data = model(db=db)
     table = model_table(data)
 
@@ -324,7 +326,7 @@ def post(model, req):
     
 
 def put(model, req, id):
-    db = nfw.Mysql()
+    db = Mysql()
     data = model(db=db)
     table = model_table(data)
 
@@ -373,12 +375,12 @@ def put(model, req, id):
         data.commit()
         return data.dump_json()
     else:
-        data.commit()
-        return "{\"action\": \"failed\"}"
+        db.commit()
+        raise nfw.HTTPNotFound("Not Found", "Object not found")
 
 
 def delete(model, req, id):
-    db = nfw.Mysql()
+    db = Mysql()
     data = model(db=db)
     table = model_table(data)
 
@@ -416,4 +418,4 @@ def delete(model, req, id):
         return "{\"action\": \"success\"}"
     else:
         db.commit()
-        return "{\"action\": \"failed\"}"
+        raise nfw.HTTPNotFound("Not Found", "Object not found")
