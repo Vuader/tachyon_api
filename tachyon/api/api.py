@@ -72,8 +72,37 @@ def parse_body(body, domain, domain_id, tenant, tenant_id):
     return json.dumps(obj)
 
 
-def sql_get(table, req, resp, id, where=None, where_values=None):
+class LeftJoin():
+    def __init__(self, additional_select, ljo, where=None):
+        self.additional_select = additional_select
+        self.ljo = ljo
+        self.where = where
+
+
+def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None):
     db = Mysql()
+
+    tables = set([ table ])
+
+
+    if left_join is not None:
+        for s in left_join.additional_select:
+            tables.add(s.split(".")[0])
+
+    fields = {}
+
+    for i,t in enumerate(tables):
+        field_query = """SELECT `COLUMN_NAME`,`DATA_TYPE`
+                     FROM `INFORMATION_SCHEMA`.`COLUMNS`
+                     WHERE `TABLE_NAME`=%s"""
+        field_results = db.execute(field_query, (t,))
+
+        if len(field_results) > 0:
+            for field in field_results:
+                fields[t + "." + field['COLUMN_NAME']] = field['DATA_TYPE']
+        else:
+            raise nfw.HTTPNotFound("Not Found", "Table not found")
+
 
     tenant_id = req.context.get('tenant_id')
     domain_id = req.context.get('domain_id')
@@ -90,7 +119,10 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
     sql_values = []
     sql_where = []
     if id is not None:
-        sql_where.append("id = %s")
+        if left_join is None:
+            sql_where.append("id = %s")
+        else:
+            sql_where.append(table + ".id = %s")
         sql_values.append(id)
 
     if domain_id is not None:
@@ -103,15 +135,17 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
 
     sql_search_where = []
     if search is not None:
-        search = "%s%s" % (search,'%')
-        for field in data._declared_fields:
-            f = getattr(data, field)
-            if isinstance(f, nfw.model.Fields.Text):
+        #search = "%s%s" % (search,'%')
+        for field in fields:
+            if 'char' in fields[field]:
                 sql_search_where.append("%s like %s" % (field, '%s'))
-                sql_values.append(search)
-            if isinstance(f, nfw.model.Fields.Integer):
-                sql_search_where.append("%s like %s" % (field, '%s'))
-                sql_values.append(int(search))
+                sql_values.append(search + "%")
+	    if 'int' in fields[field]:
+                try:
+                    sql_values.append(int(search))
+                    sql_search_where.append("%s = %s" % (field, '%s'))
+                except:
+                    pass
         if len(sql_search_where) > 0:
             sql_search_string = " or ".join(sql_search_where)
             sql_where.append("( %s )" % (sql_search_string,))
@@ -147,8 +181,12 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
             order_options = order.split(' ')
             order_field = order_options[0]
             order_field = regex.sub('', order_field)
-            if order_field not in data._declared_fields:
-                raise nfw.HTTPInvalidParam(order_field)
+            fields_no_tables = [re.sub(".*\.","",f) for f in fields]
+            if order_field not in fields_no_tables:
+                if left_join is None:
+                   raise nfw.HTTPInvalidParam(order_field)
+                elif order_field not in left_join.additional_select.values():
+                    raise nfw.HTTPInvalidParam(order_field)
             order_type = "asc"
             if len(order_options) == 2:
                 order_type = order_options[1].lower()
@@ -159,8 +197,42 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
         formatted_orders = ",".join(formatted_orders)
         sql_order = "ORDER BY %s " % (formatted_orders,)
 
-    sql_query = "SELECT * FROM %s" % (table,)
-    sql_count = "SELECT count(id) as count FROM %s" % (table,)
+    if left_join is None:
+        sql_count = "SELECT count(id) as count FROM %s" % (table,)
+        sql_query = "SELECT * FROM %s" % (table,)
+    else:
+	sql_query = ["SELECT"]
+        original_sql_query = [ "%s.*" % (table,)]
+        new_sql_query = []
+	for k in left_join.additional_select:
+            if left_join.additional_select[k]:
+                new_sql_query.append(k + " as " + left_join.additional_select[k])
+            else:
+                new_sql_query.append(k)
+	sql_query.append(",".join(original_sql_query + new_sql_query))
+        sql_query.append("FROM")
+	sql_query.append(table)
+        sql_count = ["SELECT"]
+        sql_count.append("count(%s.id) as count" % (table,))
+        sql_count.append("FROM")
+        sql_count.append(table)
+        for k in left_join.ljo:
+            sql_query.append('LEFT JOIN')
+            sql_query.append(k)
+            sql_query.append('ON')
+            sql_count.append('LEFT JOIN')
+            sql_count.append(k)
+            sql_count.append('ON')
+            for i,o in enumerate(left_join.ljo[k]):
+                if i > 0:
+                    sql_query.append('AND')
+                    sql_count.append('AND')
+                sql_query.append(o+"="+left_join.ljo[k][o])
+                sql_count.append(o+"="+left_join.ljo[k][o])
+        sql_query = " ".join(sql_query)
+        sql_count = " ".join(sql_count)
+
+
     if len(sql_where) > 0:
         sql_query = "%s where %s" % (sql_query, sql_where_string)
         sql_count = "%s where %s" % (sql_count, sql_where_string)
@@ -170,17 +242,10 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
     resp.headers['X-Total-Rows'] = count_result[0]['count']
     resp.headers['X-Filtered-Rows'] = count_result[0]['count']
 
-    result = db.execute(sql_count, sql_values)
+    result = db.execute(sql_query, sql_values)
     db.commit()
 
-    if id is not None:
-        if len(result) == 1:
-            return json.dumps(result[0])
-        else:
-            raise nfw.HTTPNotFound("Not Found", "Object not found")
-    else:
-        return json.dumps(result, indent=4)
-
+    return json.dumps(result, indent=4)
 
 def get(model, req, resp, id, where=None, where_values=None):
     db = Mysql()
