@@ -35,6 +35,7 @@ CREATE TABLE `tenant` (
     `idtype` varchar(20) DEFAULT NULL,
     `employer` varchar(60) DEFAULT NULL,
     `designation` varchar(60) DEFAULT NULL,
+    `bill_address` enum('Physical','Post') DEFAULT NULL,
     `address_line1` varchar(60) DEFAULT NULL,
     `address_line2` varchar(60) DEFAULT NULL,
     `address_line3` varchar(60) DEFAULT NULL,
