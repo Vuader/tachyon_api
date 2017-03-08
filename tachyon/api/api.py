@@ -72,7 +72,7 @@ def parse_body(body, domain, domain_id, tenant, tenant_id):
     return json.dumps(obj)
 
 
-def sql_get(table, req, resp, id, where=None, where_values=None):
+def sql_get_query(table, req, resp, id, where=None, where_values=None):
     db = Mysql()
 
     tenant_id = req.context.get('tenant_id')
@@ -147,8 +147,6 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
             order_options = order.split(' ')
             order_field = order_options[0]
             order_field = regex.sub('', order_field)
-            if order_field not in data._declared_fields:
-                raise nfw.HTTPInvalidParam(order_field)
             order_type = "asc"
             if len(order_options) == 2:
                 order_type = order_options[1].lower()
@@ -170,8 +168,14 @@ def sql_get(table, req, resp, id, where=None, where_values=None):
     resp.headers['X-Total-Rows'] = count_result[0]['count']
     resp.headers['X-Filtered-Rows'] = count_result[0]['count']
 
-    result = db.execute(sql_count, sql_values)
+    result = db.execute(sql_query, sql_values)
     db.commit()
+
+    return result
+
+
+def sql_get(table, req, resp, id, where=None, where_values=None):
+    result = sql_get_query(table, req, resp, id, where=None, where_values=None)
 
     if id is not None:
         if len(result) == 1:

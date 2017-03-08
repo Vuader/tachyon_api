@@ -73,7 +73,7 @@ def get_domain_id(domain):
     if len(result) > 0:
         return result[0]['id']
     else:
-        return None
+        raise nfw.HTTPNotFound("Domain not found: %s" % (domain,))
 
 
 def get_domain_name(domain):
@@ -81,6 +81,17 @@ def get_domain_name(domain):
     result = db.execute("SELECT name FROM domain" +
                         " WHERE id = %s OR name = %s",
                         (domain, domain))
+    if len(result) > 0:
+        return result[0]['name']
+    else:
+        return None
+
+
+def get_tenant_name(tenant):
+    db = nfw.Mysql()
+    result = db.execute("SELECT name FROM tenant" +
+                        " WHERE id = %s OR name = %s",
+                        (tenant, tenant))
     if len(result) > 0:
         return result[0]['name']
     else:
@@ -96,19 +107,7 @@ def get_tenant_id(tenant):
     if len(result) > 0:
         return result[0]['id']
     else:
-        return None
-
-
-def get_tenant_name(tenant):
-    db = nfw.Mysql()
-    result = db.execute("SELECT name FROM tenant" +
-                        " WHERE id = %s OR name = %s",
-                        (tenant, tenant))
-    db.commit()
-    if len(result) > 0:
-        return result[0]['name']
-    else:
-        return None
+        raise nfw.HTTPNotFound("Tenant not found: %s" % (tenant,))
 
 
 def get_role_name(role):
@@ -122,6 +121,17 @@ def get_role_name(role):
     else:
         return None
 
+
+def get_role_id(role):
+    db = nfw.Mysql()
+    result = db.execute("SELECT id FROM role" +
+                        " WHERE id = %s OR name = %s",
+                        (role, role))
+    db.commit()
+    if len(result) > 0:
+        return result[0]['id']
+    else:
+        raise nfw.HTTPNotFound("Role not found: %s" % (role,))
 
 def get_user_domain_admin(user_id, domain_id):
     db = nfw.Mysql()
@@ -388,11 +398,25 @@ class Authenticate(object):
 @nfw.app.resources()
 class Users(object):
     def __init__(self, app):
-        app.router.add(nfw.HTTP_GET, '/users', self.get, 'users:view')
-        app.router.add(nfw.HTTP_GET, '/users/{id}', self.get, 'users:view')
-        app.router.add(nfw.HTTP_POST, '/users', self.post, 'users:admin')
-        app.router.add(nfw.HTTP_PUT, '/users/{id}', self.put, 'users:admin')
-        app.router.add(nfw.HTTP_DELETE, '/users/{id}', self.delete,
+        app.router.add(nfw.HTTP_GET,
+                       '/users',
+                       self.get,
+                       'users:view')
+        app.router.add(nfw.HTTP_GET,
+                       '/users/{id}',
+                       self.get,
+                       'users:view')
+        app.router.add(nfw.HTTP_POST,
+                       '/users',
+                       self.post,
+                       'users:admin')
+        app.router.add(nfw.HTTP_PUT,
+                       '/users/{id}',
+                       self.put,
+                       'users:admin')
+        app.router.add(nfw.HTTP_DELETE,
+                       '/users/{id}',
+                       self.delete,
                        'users:admin')
 
     def get(self, req, resp, id=None):
@@ -406,3 +430,219 @@ class Users(object):
 
     def delete(self, req, resp, id):
         return api.delete(tachyon.common.model.User, req, id)
+
+
+@nfw.app.resources()
+class UsersRoles(object):
+    def __init__(self, app):
+        app.router.add(nfw.HTTP_GET,
+                       '/users/roles/{user_id}',
+                       self.get,
+                       'users:view')
+
+        app.router.add(nfw.HTTP_POST,
+                       '/users/roles/{user_id}/{role}/{domain}',
+                       self.post,
+                       'users:admin')
+        app.router.add(nfw.HTTP_POST,
+                       '/users/roles/{user_id}/{role}/{domain}/{tenant}',
+                       self.post,
+                       'users:admin')
+
+        app.router.add(nfw.HTTP_DELETE,
+                       '/users/roles/{user_id}/{role}/{domain}',
+                       self.delete,
+                       'users:admin')
+        app.router.add(nfw.HTTP_DELETE,
+                       '/users/roles/{user_id}/{role}/{domain}/{tenant}',
+                       self.delete,
+                       'users:admin')
+
+    def get(self, req, resp, user_id):
+        db = nfw.Mysql()
+	user = api.sql_get_query('user', req, resp, user_id)
+        response = db.execute("SELECT * FROM user_role WHERE user_id = %s",
+                              (user_id,))
+        roles = []
+        for role in response:
+            r = OrderedDict()
+            r['user_id'] = user[0]['id']
+            r['username'] = user[0]['username']
+            r['role_id'] = role['role_id']
+            r['role_name'] = get_role_name(role['role_id'])
+            r['domain_id'] = role['domain_id']
+            r['domain_name'] = get_domain_name(role['domain_id'])
+            r['tenant_id'] = role['tenant_id']
+            r['tenant_name'] = get_tenant_name(role['tenant_id'])
+            roles.append(r)
+
+        return json.dumps(roles, indent=4)
+
+    def post(self, req, resp, user_id, role, domain, tenant=None):
+	user = api.sql_get_query('user', req, resp, user_id)
+        domain_id = get_domain_id(domain)
+        role_id = get_role_id(role)
+        if tenant is not None:
+            tenant_id = get_tenant_id(tenant)
+        else:
+            tenant_id = None
+        db = nfw.Mysql()
+        values = []
+        sql = "SELECT * FROM user_role"
+        sql += " WHERE user_id = %s"
+        sql += " AND role_id = %s"
+        sql += " AND domain_id = %s"
+        values.append(user_id)
+        values.append(role_id)
+        values.append(domain_id)
+
+        if tenant is not None:
+            sql += " and tenant_id = %s"
+            values.append(tenant_id)
+
+        c_role = db.execute(sql, values)
+        if len(c_role) == 0 and len(user) > 0:
+            sql = "INSERT INTO user_role"
+            sql += " (id, role_id, domain_id, tenant_id, user_id)"
+            sql += " values"
+            sql += " (uuid(), %s, %s, %s, %s)"
+            db.execute(sql, (role_id, domain_id, tenant_id, user_id))
+            db.commit()
+
+    def delete(self, req, resp, user_id, role, domain, tenant=None):
+	user = api.sql_get_query('user', req, resp, user_id)
+        domain_id = get_domain_id(domain)
+        role_id = get_role_id(role)
+        if tenant is not None:
+            tenant_id = get_tenant_id(tenant)
+        else:
+            tenant_id = None
+        db = nfw.Mysql()
+
+        if len(user) > 0:
+            sql = "DELETE FROM user_role"
+            sql += " WHERE user_id = %s"
+            sql += " AND role_id = %s"
+            sql += " AND domain_id = %s"
+            values = []
+            values.append(user_id)
+            values.append(role_id)
+            values.append(domain_id)
+
+            if tenant is not None:
+                sql += " and tenant_id = %s"
+                values.append(tenant_id)
+
+            db.execute(sql, values)
+            db.commit()
+
+
+@nfw.app.resources()
+class Roles(object):
+    def __init__(self, app):
+        app.router.add(nfw.HTTP_GET,
+                       '/roles',
+                       self.get,
+                       'tachyon:login')
+        app.router.add(nfw.HTTP_GET,
+                       '/roles/{id}',
+                       self.get,
+                       'roles:admin')
+        app.router.add(nfw.HTTP_POST,
+                       '/roles',
+                       self.post,
+                       'roles:admin')
+        app.router.add(nfw.HTTP_PUT,
+                       '/roles/{id}',
+                       self.put,
+                       'roles:admin')
+        app.router.add(nfw.HTTP_DELETE,
+                       '/roles/{id}',
+                       self.delete,
+                       'roles:admin')
+
+    def get(self, req, resp, id=None):
+        return api.get(tachyon.common.model.Roles, req, resp, id)
+
+    def post(self, req, resp):
+        return api.post(tachyon.common.model.Role, req)
+
+    def put(self, req, resp, id):
+        return api.put(tachyon.common.model.Role, req, id)
+
+    def delete(self, req, resp, id):
+        return api.delete(tachyon.common.model.Role, req, id)
+
+
+@nfw.app.resources()
+class Domains(object):
+    def __init__(self, app):
+        app.router.add(nfw.HTTP_GET,
+                       '/domains',
+                       self.get,
+                       'tachyon:login')
+        app.router.add(nfw.HTTP_GET,
+                       '/domains/{id}',
+                       self.get,
+                       'domains:admin')
+        app.router.add(nfw.HTTP_POST,
+                       '/domains',
+                       self.post,
+                       'domains:admin')
+        app.router.add(nfw.HTTP_PUT,
+                       '/domains/{id}',
+                       self.put,
+                       'domains:admin')
+        app.router.add(nfw.HTTP_DELETE,
+                       '/domains/{id}',
+                       self.delete,
+                       'domains:admin')
+
+    def get(self, req, resp, id=None):
+        return api.get(tachyon.common.model.Domains, req, resp, id)
+
+    def post(self, req, resp):
+        return api.post(tachyon.common.model.Domain, req)
+
+    def put(self, req, resp, id):
+        return api.put(tachyon.common.model.Domain, req, id)
+
+    def delete(self, req, resp, id):
+        return api.delete(tachyon.common.model.Domain, req, id)
+
+
+@nfw.app.resources()
+class Tenants(object):
+    def __init__(self, app):
+        app.router.add(nfw.HTTP_GET,
+                       '/tenants',
+                       self.get,
+                       'tenants:view')
+        app.router.add(nfw.HTTP_GET,
+                       '/tenants/{id}',
+                       self.get,
+                       'tenants:view')
+        app.router.add(nfw.HTTP_POST,
+                       '/tenants',
+                       self.post,
+                       'tenants:admin')
+        app.router.add(nfw.HTTP_PUT,
+                       '/tenants/{id}',
+                       self.put,
+                       'tenants:admin')
+        app.router.add(nfw.HTTP_DELETE,
+                       '/tenants/{id}',
+                       self.delete,
+                       'tenants:admin')
+
+    def get(self, req, resp, id=None):
+        return api.get(tachyon.common.model.Tenants, req, resp, id)
+
+    def post(self, req, resp):
+        return api.post(tachyon.common.model.Tenant, req)
+
+    def put(self, req, resp, id):
+        return api.put(tachyon.common.model.Tenant, req, id)
+
+    def delete(self, req, resp, id):
+        return api.delete(tachyon.common.model.Tenant, req, id)
