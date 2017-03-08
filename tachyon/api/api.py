@@ -135,7 +135,6 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
 
     sql_search_where = []
     if search is not None:
-        #search = "%s%s" % (search,'%')
         for field in fields:
             if 'char' in fields[field]:
                 sql_search_where.append("%s like %s" % (field, '%s'))
@@ -245,7 +244,16 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
     result = db.execute(sql_query, sql_values)
     db.commit()
 
-    return json.dumps(result, indent=4)
+    if id is not None:
+        if len(result) == 1:
+            return json.dumps(result[0], indent=4)
+        elif len(result) > 1:
+            return json.dumps(result, indent=4)
+        else:
+            raise nfw.HTTPNotFound("Not Found", "Object not found")
+    else:
+        return json.dumps(result, indent=4)
+
 
 def get(model, req, resp, id, where=None, where_values=None):
     db = Mysql()
