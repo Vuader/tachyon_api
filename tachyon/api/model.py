@@ -34,25 +34,5 @@ from __future__ import unicode_literals
 
 import nfw
 
-class UserFields(object):
-    class Meta(object):
-        db_table = 'user'
-
-    id = nfw.Model.Uuid(hidden=True)
-    domain_id = nfw.Model.Uuid(hidden=True)
-    tenant_id = nfw.Model.Uuid(hidden=True)
-    username = nfw.Model.Text(label="Username")
-    password = nfw.Model.Password(label="Password")
-    email = nfw.Model.Email(label="Email")
-    last_login = nfw.Model.Datetime(hidden=True)
-    extra = nfw.Model.JsonObject(hidden=True)
-    enabled = nfw.Model.Bool(label="Enabled")
-    creation_time = nfw.Model.Datetime(hidden=True)
-
-class Users(UserFields, nfw.Model):
-    pass
-
-class User(UserFields, nfw.ModelDict):
-    pass
 
 

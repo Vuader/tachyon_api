@@ -79,11 +79,10 @@ class LeftJoin():
         self.where = where
 
 
-def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None):
+def sql_get_query(table, req, resp, id, where=None, where_values=None, left_join=None):
     db = Mysql()
 
     tables = set([ table ])
-
 
     if left_join is not None:
         for s in left_join.additional_select:
@@ -135,6 +134,7 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
 
     sql_search_where = []
     if search is not None:
+        #search = "%s%s" % (search,'%')
         for field in fields:
             if 'char' in fields[field]:
                 sql_search_where.append("%s like %s" % (field, '%s'))
@@ -231,7 +231,6 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
         sql_query = " ".join(sql_query)
         sql_count = " ".join(sql_count)
 
-
     if len(sql_where) > 0:
         sql_query = "%s where %s" % (sql_query, sql_where_string)
         sql_count = "%s where %s" % (sql_count, sql_where_string)
@@ -244,11 +243,21 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
     result = db.execute(sql_query, sql_values)
     db.commit()
 
+    return result
+
+
+def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None):
+    result = sql_get_query(table,
+                           req,
+                           resp,
+                           id,
+                           where=None,
+                           where_values=None,
+                           left_join=left_join)
+
     if id is not None:
         if len(result) == 1:
-            return json.dumps(result[0], indent=4)
-        elif len(result) > 1:
-            return json.dumps(result, indent=4)
+            return json.dumps(result[0])
         else:
             raise nfw.HTTPNotFound("Not Found", "Object not found")
     else:

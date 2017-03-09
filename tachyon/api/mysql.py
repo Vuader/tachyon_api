@@ -49,6 +49,8 @@ class Mysql(object):
                 raise nfw.HTTPBadRequest('Object records','Object is required by others')
             elif code == 1062:
                 raise nfw.HTTPBadRequest('Object records','Duplicate object')
+            elif code == 1048:
+                raise nfw.HTTPBadRequest('Object records', value)
             else:
                 raise MySQLdb.IntegrityError(e)
 
