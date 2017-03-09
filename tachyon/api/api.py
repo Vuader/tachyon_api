@@ -258,6 +258,8 @@ def sql_get(table, req, resp, id, where=None, where_values=None, left_join=None)
     if id is not None:
         if len(result) == 1:
             return json.dumps(result[0])
+        elif len(result) > 1:
+            return json.dumps(result, indent=4)
         else:
             raise nfw.HTTPNotFound("Not Found", "Object not found")
     else:
